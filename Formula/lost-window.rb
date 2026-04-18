@@ -4,7 +4,7 @@ class LostWindow < Formula
   head "https://github.com/Majboor/lost-window.git", branch: "main"
 
   def install
-    libexec.install Dir["bin/*"]
+    libexec.install "bin"
     pkgshare.install "README.md"
     pkgshare.install "raycast"
     pkgshare.install "shortcuts"
