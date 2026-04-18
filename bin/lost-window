@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="${0:A:h}"
+SCRIPT_PATH="${0:A}"
+SCRIPT_DIR="${SCRIPT_PATH:h}"
 SWIFT_SCRIPT="$SCRIPT_DIR/lost-window.swift"
+APP_INSTALLER="$SCRIPT_DIR/lost-window-install-apps"
 
 pick_app() {
   local -a apps
@@ -40,6 +42,7 @@ Usage:
   ./bin/lost-window list
   ./bin/lost-window frontmost
   ./bin/lost-window fix "App Name"
+  ./bin/lost-window install-apps
 EOF
 }
 
@@ -55,6 +58,10 @@ case "$command" in
   fix)
     shift
     exec swift "$SWIFT_SCRIPT" fix "$@"
+    ;;
+  install-apps)
+    shift
+    exec "$APP_INSTALLER" "$SCRIPT_PATH" "$@"
     ;;
   *)
     usage >&2
