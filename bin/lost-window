@@ -1,0 +1,63 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+SCRIPT_DIR="${0:A:h}"
+SWIFT_SCRIPT="$SCRIPT_DIR/lost-window.swift"
+
+pick_app() {
+  local -a apps
+  apps=("${(@f)$(swift "$SWIFT_SCRIPT" list)}")
+
+  if (( ${#apps[@]} == 0 )); then
+    print -u2 "No regular running apps found."
+    exit 1
+  fi
+
+  local picked
+  picked=$(osascript - "${apps[@]}" <<'APPLESCRIPT'
+on run argv
+  set picked to choose from list argv with title "Lost Window" with prompt "Pick the app whose window you want back onscreen." OK button name "Force Show" cancel button name "Cancel"
+  if picked is false then
+    return ""
+  end if
+  return item 1 of picked
+end run
+APPLESCRIPT
+)
+
+  if [[ -z "$picked" ]]; then
+    exit 0
+  fi
+
+  exec swift "$SWIFT_SCRIPT" fix "$picked"
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./bin/lost-window choose
+  ./bin/lost-window list
+  ./bin/lost-window frontmost
+  ./bin/lost-window fix "App Name"
+EOF
+}
+
+command="${1:-choose}"
+
+case "$command" in
+  choose)
+    pick_app
+    ;;
+  list|frontmost)
+    exec swift "$SWIFT_SCRIPT" "$command"
+    ;;
+  fix)
+    shift
+    exec swift "$SWIFT_SCRIPT" fix "$@"
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
