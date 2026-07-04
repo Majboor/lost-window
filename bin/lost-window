@@ -7,6 +7,36 @@ SCRIPT_DIR="${SCRIPT_PATH:h}"
 SWIFT_SCRIPT="$SCRIPT_DIR/lost-window.swift"
 APP_INSTALLER="$SCRIPT_DIR/lost-window-install-apps"
 
+relaunch_app() {
+  local app_name="$1"
+  osascript - "$app_name" <<'APPLESCRIPT'
+on run argv
+  set appName to item 1 of argv
+  tell application appName to quit
+  delay 1
+  tell application appName to activate
+end run
+APPLESCRIPT
+}
+
+rescue_app() {
+  local app_name="$1"
+  local output
+
+  if ! output=$(swift "$SWIFT_SCRIPT" fix "$app_name" 2>&1); then
+    if [[ "$output" == *"recoverable window"* ]]; then
+      relaunch_app "$app_name"
+      print "Relaunched $app_name because it exposed no standard recoverable window."
+      return 0
+    fi
+
+    print -u2 "$output"
+    return 1
+  fi
+
+  print "$output"
+}
+
 pick_app() {
   local -a apps
   apps=("${(@f)$(swift "$SWIFT_SCRIPT" list)}")
@@ -26,13 +56,13 @@ on run argv
   return item 1 of picked
 end run
 APPLESCRIPT
-)
+  )
 
   if [[ -z "$picked" ]]; then
     exit 0
   fi
 
-  exec swift "$SWIFT_SCRIPT" fix "$picked"
+  rescue_app "$picked"
 }
 
 usage() {
@@ -42,6 +72,7 @@ Usage:
   ./bin/lost-window list
   ./bin/lost-window frontmost
   ./bin/lost-window fix "App Name"
+  ./bin/lost-window rescue "App Name"
   ./bin/lost-window install-apps
 EOF
 }
@@ -58,6 +89,10 @@ case "$command" in
   fix)
     shift
     exec swift "$SWIFT_SCRIPT" fix "$@"
+    ;;
+  rescue)
+    shift
+    rescue_app "$*"
     ;;
   install-apps)
     shift
